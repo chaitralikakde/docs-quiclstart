@@ -6,9 +6,21 @@ import { StepCard } from "@/components/StepCard";
 
 ## Overview
 
-[Keploy](https://keploy.io) records your app's real API traffic and turns it into test cases automatically. It also captures the Redis calls your app makes and saves them as mocks, so tests can run later without a live database.
+Testing APIs that talk to Redis usually means either running Redis everywhere or spending time writing mocks that go stale. Keploy takes a different approach: it watches your running app, records every HTTP request and every Redis call your app makes, then plays it all back as a test suite. No test code to write, no mock libraries to set up.
 
-This guide uses a small Go app built with [Gin](https://gin-gonic.com/) and Redis. The app lets users request and verify a one-time password (OTP).
+This guide walks through a Go app built with [Gin](https://gin-gonic.com/) and Redis. The app has two endpoints: request an OTP and verify it.
+
+---
+
+<div id="how-it-works" style={{ scrollMarginTop: "5rem" }} />
+
+## How it works
+
+**During recording**, make API calls and Keploy saves every request and Redis interaction to disk.
+
+**During testing**, Keploy replays those requests and fakes the Redis responses. No real Redis needed.
+
+<img src="/keploy_simple_diagram.svg" alt="How Keploy works" style={{ width: "100%", borderRadius: "10px", border: "1px solid var(--border)" }} />
 
 ---
 
@@ -20,7 +32,7 @@ This guide uses a small Go app built with [Gin](https://gin-gonic.com/) and Redi
 - [Docker Desktop](https://docs.docker.com/get-docker/) running
 
 <Callout type="warning" title="macOS requirement">
-  Docker Desktop 4.25.2 or later is required on macOS. Check via Docker Desktop > About Docker Desktop.
+  Docker Desktop 4.25.2 or later is required. Keploy uses eBPF to intercept network traffic, and older versions on macOS don't expose the kernel interfaces it needs.
 </Callout>
 
 ---
@@ -39,9 +51,9 @@ go mod download`}</CodeBlock>
 
 <StepCard id="step-2" step={2} title="Install Keploy">
 
-<CodeBlock language="bash">{`curl --silent -O -L https://keploy.io/ent/install.sh && source install.sh`}</CodeBlock>
+Keploy is a CLI that wraps your app. No SDK or imports needed in your Go project.
 
-Verify the install:
+<CodeBlock language="bash">{`curl --silent -O -L https://keploy.io/ent/install.sh && source install.sh`}</CodeBlock>
 
 <CodeBlock language="bash">{`keploy --version`}</CodeBlock>
 
@@ -49,7 +61,7 @@ Verify the install:
 
 <StepCard id="step-3" step={3} title="Create a Docker network and start Redis">
 
-Containers are isolated by default. A shared network lets your app reach Redis by container name instead of `localhost`.
+Containers are isolated by default. A shared network lets your app reach Redis using its container name (`myredis`) as a hostname.
 
 <CodeBlock language="bash">{`docker network create keploy-network`}</CodeBlock>
 
@@ -59,15 +71,9 @@ Containers are isolated by default. A shared network lets your app reach Redis b
 
 <StepCard id="step-4" step={4} title="Update the Redis address and build the image">
 
-Inside Docker, `localhost` refers to the container itself, not Redis. Update the address in `helpers/redis/redisConnect.go`:
+Inside a Docker container, `localhost` refers to the container itself, not Redis. Change the address in `helpers/redis/redisConnect.go`:
 
-<CodeBlock language="go" filename="helpers/redis/redisConnect.go">{`// change this line
-Addr: "localhost:6379",
-
-// to this
-Addr: "myredis:6379",`}</CodeBlock>
-
-Then build the image:
+<CodeBlock language="go" filename="helpers/redis/redisConnect.go">{`Addr: "myredis:6379",  // was localhost:6379`}</CodeBlock>
 
 <CodeBlock language="bash">{`docker build -t gin-app:1.0 .`}</CodeBlock>
 
@@ -79,19 +85,21 @@ Then build the image:
 
 <StepCard id="step-5" step={5} title="Record test cases">
 
+This starts Keploy in record mode. Every HTTP request your app handles becomes a test. Every Redis call it makes becomes a mock.
+
 <CodeBlock language="bash">{`keploy record -c "docker run -p 3001:3001 --network keploy-network --name ginRedisApp gin-app:1.0"`}</CodeBlock>
 
-Wait until you see:
+Wait for:
 
 <CodeBlock>{`Keploy agent is ready to record test cases and mocks.`}</CodeBlock>
 
-Keep this terminal open. Keploy is watching all traffic your app makes.
+Keep this terminal open.
 
 </StepCard>
 
 <StepCard id="step-6" step={6} title="Make API calls">
 
-Open a second terminal and run these two requests. Each one becomes a test case.
+Open a second terminal. These two requests become your test suite.
 
 **Request an OTP:**
 
@@ -103,7 +111,7 @@ Open a second terminal and run these two requests. Each one becomes a test case.
   "otp": "5486"
 }`}</CodeBlock>
 
-**Verify the OTP** (use the value returned above):
+**Verify the OTP:**
 
 <CodeBlock language="bash">{`curl -X POST localhost:3001/api/verifyCode \
   --header 'Content-Type: application/json' \
@@ -116,7 +124,7 @@ Open a second terminal and run these two requests. Each one becomes a test case.
   "message": "OTP authenticated successfully"
 }`}</CodeBlock>
 
-Go back to the first terminal and press `Ctrl+C` to stop recording.
+Press `Ctrl+C` in the first terminal to stop recording.
 
 </StepCard>
 
@@ -124,10 +132,10 @@ Go back to the first terminal and press `Ctrl+C` to stop recording.
 
 <CodeBlock language="bash">{`keploy test -c "docker run -p 3001:3001 --rm --network keploy-network --name ginRedisApp gin-app:1.0" --delay 10`}</CodeBlock>
 
-`--delay 10` gives the app 10 seconds to start before Keploy sends the recorded requests. Keploy will print a pass/fail result for each test.
+`--delay 10` gives the container 10 seconds to start before Keploy sends requests.
 
 <Callout type="success" title="No Redis needed during tests">
-  Keploy replays the recorded Redis calls from `mocks.yml` instead of hitting a live instance. Tests are fast and work in CI without any external services.
+  Keploy intercepts outbound Redis calls and returns the saved responses from `mocks.yml`. Tests run the same way locally, in CI, or anywhere else with no Redis required.
 </Callout>
 
 </StepCard>
@@ -138,11 +146,11 @@ Go back to the first terminal and press `Ctrl+C` to stop recording.
 
 ## What Keploy captured
 
-Keploy creates a `keploy/` directory with one file per test and a shared mocks file.
+Keploy writes plain YAML files you can read, edit, and commit to git.
 
 <img src="/test.png" alt="Generated test-1.yml file" style={{ borderRadius: "10px", border: "1px solid var(--border)", marginBottom: "1.25rem", width: "100%" }} />
 
-`test-1.yml` stores the full HTTP request and expected response:
+`test-1.yml` holds the HTTP request and the expected response:
 
 <CodeBlock language="yaml" filename="keploy/test-1.yml">{`version: api.keploy.io/v1beta2
 kind: Http
@@ -156,12 +164,14 @@ spec:
     body: '{"status":"true","message":"OTP Generated successfully","otp":"5486"}'
   assertions:
     noise:
-      - body.otp      # ignored because OTP changes every run
+      - body.otp      # OTP changes every run, so Keploy skips asserting it
       - header.Date`}</CodeBlock>
+
+The `noise` field tells Keploy which fields to skip when comparing. Anything non-deterministic (OTPs, timestamps, tokens) goes here.
 
 <img src="/mocks.png" alt="Generated mocks.yml file" style={{ borderRadius: "10px", border: "1px solid var(--border)", marginTop: "1.25rem", marginBottom: "1.25rem", width: "100%" }} />
 
-`mocks.yml` stores the Redis interactions so tests do not need a real database:
+`mocks.yml` stores the raw Redis wire protocol. During tests, Keploy returns these exact bytes to your app so `go-redis` gets a response it can't tell apart from a real server:
 
 <CodeBlock language="yaml" filename="keploy/mocks.yml">{`version: api.keploy.io/v1beta2
 kind: Generic
@@ -186,21 +196,17 @@ spec:
 
 **`connection refused` on port 6379**
 
-The Redis address is still `localhost:6379` in the source code. Update it to `myredis:6379` and rebuild the image.
+Update `Addr` to `myredis:6379` in `helpers/redis/redisConnect.go` and rebuild the image.
 
 **`The container name "/myredis" is already in use`**
 
 <CodeBlock language="bash">{`docker rm -f myredis`}</CodeBlock>
 
-Then re-run the Redis command from Step 3.
-
 **`sh: networkName: No such file or directory`**
 
-The `<networkName>` in the command is a placeholder. Replace it with your actual network name, for example `keploy-network`.
+Replace `<networkName>` with the actual name, e.g. `keploy-network`.
 
 **Keploy agent did not become ready in time**
-
-Clean up any leftover containers and retry:
 
 <CodeBlock language="bash">{`docker rm -f ginRedisApp keploy-v3`}</CodeBlock>
 
