@@ -39,8 +39,8 @@ export function CodeBlock({ children, language = "bash", filename }: CodeBlockPr
       <div className="relative group">
         <pre
           className="p-4 overflow-x-auto leading-relaxed m-0"
-          style={{ fontSize: "0.9375rem" }}
           style={{
+            fontSize: "0.9375rem",
             background: "transparent",
             border: "none",
             borderRadius: 0,
