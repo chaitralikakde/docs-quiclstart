@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #09090b;
+  --bg-nav: rgba(9, 9, 11, 0.92);
+  --fg: #f4f4f5;
+  --fg-muted: #a1a1aa;
+  --fg-subtle: #71717a;
+  --border: rgba(255, 255, 255, 0.08);
+  --code-bg: #0d1117;
+  --inline-code-bg: rgba(255, 255, 255, 0.07);
+  --inline-code-border: rgba(255, 255, 255, 0.1);
+  --inline-code-color: #c4b5fd;
+  --link-color: #818cf8;
+  --link-hover: #a5b4fc;
+  --code-text: #c9d1d9;
+}
+
+.light {
+  --bg: #ffffff;
+  --bg-nav: rgba(255, 255, 255, 0.92);
+  --fg: #111113;
+  --fg-muted: #52525b;
+  --fg-subtle: #71717a;
+  --border: rgba(0, 0, 0, 0.08);
+  --code-bg: #f6f8fa;
+  --inline-code-bg: rgba(0, 0, 0, 0.05);
+  --inline-code-border: rgba(0, 0, 0, 0.1);
+  --inline-code-color: #6d28d9;
+  --link-color: #4f46e5;
+  --link-hover: #4338ca;
+  --code-text: #0a0a0a;
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── Prose ─────────────────────────────────────────── */
+
+.prose-custom h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin-top: 2.5rem;
+  margin-bottom: 0.875rem;
+  letter-spacing: -0.01em;
+  scroll-margin-top: 5rem;
+}
+
+.prose-custom h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-custom p {
+  color: var(--fg-muted);
+  line-height: 1.75;
+  margin-bottom: 0.875rem;
+  font-size: 1rem;
+}
+
+.prose-custom strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.prose-custom a {
+  color: var(--link-color);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(129, 140, 248, 0.3);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.prose-custom a:hover {
+  color: var(--link-hover);
+  border-bottom-color: rgba(165, 180, 252, 0.5);
+}
+
+.prose-custom hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.prose-custom ul {
+  margin: 0.5rem 0 0.875rem 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+  color: var(--fg-muted);
+}
+
+.prose-custom li {
+  margin-bottom: 0.3rem;
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+/* Inline code */
+.prose-custom p code,
+.prose-custom li code {
+  background: var(--inline-code-bg);
+  border: 1px solid var(--inline-code-border);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.875em;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--inline-code-color);
+}
+
+/* MDX native triple-backtick blocks */
+.prose-custom pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.prose-custom pre code {
+  background: none !important;
+  border: none !important;
+  padding: 0;
+  font-size: 0.9375rem;
+  color: #c9d1d9;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* Prevent CodeBlock wrapper div from getting prose pre styles */
+.prose-custom .code-block-wrapper pre {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+/* Light mode code colors */
+.light .prose-custom pre code {
+  color: #000000;
+}
+
+.light .prose-custom code {
+  color: #000000;
+}
+
+/* ── Scrollbar ──────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.35); }
